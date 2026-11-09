@@ -1,0 +1,39 @@
+@host = http://localhost:8080
+
+### Provider 1 – create / resubmit
+POST {{host}}/api/v1/providers/provider1/employees
+Content-Type: application/json
+
+{
+  "emp_id": "P1_001",
+  "first_name": "Alice",
+  "last_name": "Johnson",
+  "email_address": "alice.johnson@provider1.com",
+  "phone": "+1-555-0101",
+  "job_title": "Security Officer",
+  "dept": "Security Operations",
+  "hire_date": "2024-01-15",
+  "employment_status": "active"
+}
+
+### Provider 2
+POST {{host}}/api/v1/providers/provider2/employees
+Content-Type: application/json
+
+{
+  "employee_number": "P2_001",
+  "personal_info": { "given_name": "Carol", "family_name": "Davis", "email": "carol.davis@provider2.com", "mobile": "+1-555-0201" },
+  "work_info": { "role": "Security Guard", "division": "Night Shift Security", "start_date": "2024-02-01", "current_status": "employed" }
+}
+
+### Read back
+GET {{host}}/api/v1/employees/provider1/P1_001
+
+### Validation error (400)
+POST {{host}}/api/v1/providers/provider1/employees
+Content-Type: application/json
+
+{ "emp_id": "P1_999", "first_name": "", "email_address": "not-an-email" }
+
+### OpenAPI
+GET {{host}}/openapi/v1.json

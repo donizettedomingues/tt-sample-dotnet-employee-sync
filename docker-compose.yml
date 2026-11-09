@@ -1,0 +1,52 @@
+# Local stack: API + SQL Server + NATS.
+# Secrets come from .env (copy .env.example). Nothing secret is committed here.
+name: employee-sync
+
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__EmployeeSync: "Server=mssql,1433;Database=EmployeeSync;User Id=sa;Password=${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True"
+      Database__MigrateOnStartup: "true"
+      TRACKTIK__TOKENURL: ${TRACKTIK__TOKENURL:?Set TRACKTIK__TOKENURL in .env}
+      TRACKTIK__APIBASEURL: ${TRACKTIK__APIBASEURL:?Set TRACKTIK__APIBASEURL in .env}
+      TRACKTIK__CLIENTID: ${TRACKTIK__CLIENTID:?Set TRACKTIK__CLIENTID in .env}
+      TRACKTIK__CLIENTSECRET: ${TRACKTIK__CLIENTSECRET:?Set TRACKTIK__CLIENTSECRET in .env}
+      Events__Publisher: ${EVENTS__PUBLISHER:-Nats}
+      Events__Nats__Url: nats://nats:4222
+    depends_on:
+      mssql:
+        condition: service_healthy
+      nats:
+        condition: service_started
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    # No arm64 image exists; Docker Desktop runs it under emulation on Apple Silicon.
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  nats:
+    image: nats:2.10-alpine
+    command: ["--http_port", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+volumes:
+  mssql-data:
